@@ -7,6 +7,7 @@ class CustomUser(AbstractUser):
 
     USERNAME_FIELD = 'email'  
     REQUIRED_FIELDS = ['phone_number']  
+    username = models.CharField(max_length=150, unique=True, blank=True, null=True)
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='customuser_user_groups', 
@@ -24,5 +25,4 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+   
