@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from .models import CustomUser
 
 class UserSerializer(serializers.ModelSerializer):
@@ -46,3 +47,19 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("This account is inactive.")
         data['user'] = user
         return data
+    
+class PasswordResetSerializer(serializers.Serializer):
+    email=serializers.EmailField()
+
+    def validate_email(self,value):
+        try:
+            user=CustomUser.objects.filter(email=value).first()
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("Email address is not registered here")
+        return value
+    
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+    token = serializers.CharField()
+    uid = serializers.CharField()
