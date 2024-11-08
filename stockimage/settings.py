@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'account',
     'rest_framework.authtoken',
     'corsheaders',
+    'image',
     
 ]
 

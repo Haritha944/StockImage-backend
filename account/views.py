@@ -64,7 +64,7 @@ class PasswordResetRequestView(APIView):
         token = default_token_generator.make_token(user)
         frontend_url = os.getenv("FRONTEND_URL")
         uid = user.pk
-        reset_link = f"{frontend_url}{reverse('password-reset-confirm')}?uid={uid}&token={token}"
+        reset_link = f"{frontend_url.rstrip('/')}{reverse('password-reset-confirm')}?uid={uid}&token={token}"
 
 
         send_mail(
@@ -80,6 +80,7 @@ class PasswordResetConfirmView(APIView):
     def post(self,request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         if not serializer.is_valid():
+            print("Serializer errors:", serializer.errors) 
             return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
         new_password=serializer.validated_data['new_password']
         confirm_password=serializer.validated_data['confirm_password']
