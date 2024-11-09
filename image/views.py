@@ -60,3 +60,35 @@ class LastUploadDateView(APIView):
     def get(self,request):
         last_upload = Image.objects.filter(user=request.user).aggregate(Max('created_at'))['created_at__max']
         return Response({"last_upload_date": last_upload}, status=status.HTTP_200_OK)
+
+class ImageDetailView(APIView):
+    def put(self,request,id,format=None):
+        try: 
+            image = Image.objects.get(id=id)
+        except Image.DoesNotExist:
+            return Response({"message": "Image not found."}, status=status.HTTP_404_NOT_FOUND)
+        userr = image.user
+        print(userr)
+        print("Request data:", request.data)
+        print("Request FILES:", request.FILES)
+        mutable_data = request.data.copy()
+        mutable_data['user'] = userr.id
+        if 'image' in request.FILES:
+            mutable_data['image'] = request.FILES['image']
+            if image.image:
+                image.image.delete(save=False)
+        elif 'image' in mutable_data:
+            del mutable_data['image']
+        serializer = ImageUploadSerializer(image,data=mutable_data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self,request,pk):
+        try:
+            image=Image.objects.get(id=pk)
+        except Image.DoesNotExist:
+            return Response({"message": "Image not found."}, status=status.HTTP_404_NOT_FOUND)
+        image.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
