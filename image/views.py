@@ -85,9 +85,9 @@ class ImageDetailView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def delete(self,request,pk):
+    def delete(self,request,id):
         try:
-            image=Image.objects.get(id=pk)
+            image=Image.objects.get(id=id)
         except Image.DoesNotExist:
             return Response({"message": "Image not found."}, status=status.HTTP_404_NOT_FOUND)
         image.delete()
