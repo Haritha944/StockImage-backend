@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,7 @@ from .models import Image
 from django.db import transaction
 from .serializers import ImageUploadSerializer
 import logging
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Max
 
@@ -92,3 +94,26 @@ class ImageDetailView(APIView):
             return Response({"message": "Image not found."}, status=status.HTTP_404_NOT_FOUND)
         image.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ImageViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated] 
+
+    queryset = Image.objects.all() 
+    serializer_class=ImageUploadSerializer
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return Image.objects.filter(user=self.request.user).order_by('order')
+        return Image.objects.none()
+
+    @action(detail=False, methods=['patch'])
+    def reorder_images(self, request):
+        new_order=request.data.get('order')
+        
+        for index,image_id in enumerate(new_order):
+            image=Image.objects.get(id=image_id)
+            image.order=index
+            image.save()
+            
+        
+        return Response({"status":"order updated"})
