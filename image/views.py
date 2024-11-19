@@ -53,8 +53,10 @@ class BulkImageUploadView(APIView):
 class ImageListView(APIView):
     permission_classes=[IsAuthenticated]
     def get(self,request):
-        image=Image.objects.filter(user=request.user).order_by('-created_at')
+        image=Image.objects.filter(user=request.user).order_by('order')
         serializer=ImageUploadSerializer(image,many=True,context={'request':request})
+        for images in image:
+            print(f"Image ID: {images.id}, Order: {images.order}")
         return Response(serializer.data,status=status.HTTP_200_OK)
     
 class LastUploadDateView(APIView):
@@ -103,17 +105,33 @@ class ImageViewSet(viewsets.ModelViewSet):
     serializer_class=ImageUploadSerializer
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Image.objects.filter(user=self.request.user).order_by('order')
+            images = Image.objects.filter(user=self.request.user).order_by('order')
+            print(f"Returned images: {[image.id for image in images]}")  # Log image order here
+            return images
         return Image.objects.none()
 
     @action(detail=False, methods=['patch'])
     def reorder_images(self, request):
-        new_order=request.data.get('order')
+        new_order=request.data.get('order',[])
+        print(f"Received order: {new_order}")  
+        if not new_order:
+            return Response({"error": "No order provided"}, status=status.HTTP_400_BAD_REQUEST)
+        images = Image.objects.filter(id__in=new_order, user=request.user)
+        if images.count() != len(new_order):
+            return Response({"error": "One or more images not found or you do not have permission to reorder them"}, status=400)
+        with transaction.atomic():
+            updated_images = []
+            images_dict = {image.id: image for image in images}
+            for index,image_id in enumerate(new_order):
+                image=Image.objects.get(id=image_id)
+                image.order=index
+                updated_images.append(image)
+            print(f"Updated images before bulk update: {[image.id for image in updated_images]}")
+            if updated_images:
+                Image.objects.bulk_update(updated_images, ['order'])
         
-        for index,image_id in enumerate(new_order):
-            image=Image.objects.get(id=image_id)
-            image.order=index
-            image.save()
-            
-        
-        return Response({"status":"order updated"})
+        updated_images = Image.objects.filter(id__in=new_order, user=request.user).order_by('order')
+        print(f"Updated images after bulk update: {[image.id for image in updated_images]}")
+        serializer = self.get_serializer(updated_images, many=True)
+
+        return Response({"status": "Order updated", "images": serializer.data})
